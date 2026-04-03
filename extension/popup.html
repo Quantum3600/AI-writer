@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="tabs">
+        <button id="tab-ask" class="tab active">Ask</button>
+        <button id="tab-write" class="tab">Write</button>
+        <button id="tab-translate" class="tab">Translate</button>
+    </div>
+
+    <div class="input-container">
+        <textarea id="user-input" placeholder="Ask a question about this page..."></textarea>
+        
+        <div class="controls">
+            <button id="btn-mic" title="Record Voice">🎤</button>
+            <button id="btn-submit">Send</button>
+        </div>
+        
+        <div class="options">
+            <label>
+                <input type="checkbox" id="use-context" checked> 
+                Include page context
+            </label>
+        </div>
+    </div>
+
+    <div class="response-container">
+        <div id="loading" class="hidden">Thinking...</div>
+        <div id="response-output"></div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

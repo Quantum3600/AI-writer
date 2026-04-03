@@ -1,0 +1,10 @@
+ktor:
+  application:
+    modules:
+      - com.trishit.com.trishit.assistant.ApplicationKt.module
+  deployment:
+    port: 8080
+koog:
+  google:
+    apikey: ${GEMINI_API_KEY}
+    baseUrl: https://generativelanguage.googleapis.com
