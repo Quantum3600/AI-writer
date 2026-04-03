@@ -31,6 +31,14 @@
 
 ---
 
+## 📸 Screenshots
+
+| Ask | Write | Translate |
+|------|-------|-----------|
+| ![Placeholder](https://via.placeholder.com/150) | ![Placeholder](https://via.placeholder.com/150) | ![Placeholder](https://via.placeholder.com/150) |
+
+---
+
 ## 🛠️ Architecture & Tech Stack
 
 This project uses a modern, strictly separated architecture to ensure scalability, security, and ease of maintenance:
