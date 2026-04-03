@@ -35,7 +35,7 @@
 
 | Ask | Write | Translate |
 |------|-------|-----------|
-| <img src=".github/public/Screenshot 2026-04-03 190845.png" alt="Alt Text" width="300"> | <img src="path/to/image.png" alt="Alt Text" width="300"> | <img src="path/to/image.png" alt="Alt Text" width="300"> |
+| <img src=".github/public/Screenshot 2026-04-03 190845.png" alt="Alt Text" width="500"> | <img src=".github/public/Screenshot 2026-04-03 194441.png" alt="Alt Text" width="500"> | <img src=".github/public/Screenshot 2026-04-03 194559.png" alt="Alt Text" width="500"> |
 
 ---
 
