@@ -1,5 +1,5 @@
 # Build Stage
-FROM gradle:8.4-jdk21 AS build
+FROM gradle:8.11-jdk21 AS build
 COPY --chown=gradle:gradle . /home/gradle/src
 WORKDIR /home/gradle/src
 # Ktor's plugin creates a fat JAR containing all dependencies
