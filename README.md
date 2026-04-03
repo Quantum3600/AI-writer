@@ -1,42 +1,65 @@
-# AI-writer
+# ✍️ AI-Writer
 
-This project was created using the [Ktor Project Generator](https://start.ktor.io).
+![Kotlin](https://img.shields.io/badge/Kotlin-B125EA?style=for-the-badge&logo=kotlin&logoColor=white)
+![Ktor](https://img.shields.io/badge/Ktor-087CFA?style=for-the-badge&logo=ktor&logoColor=white)
+![Manifest V3](https://img.shields.io/badge/Manifest_V3-4285F4?style=for-the-badge&logo=google-chrome&logoColor=white)
 
-Here are some useful links to get you started:
+**AI-Writer** is an intelligent, AI-powered browser extension designed to enhance your web experience. Whether you need to digest long articles, ask specific questions about a webpage, or generate fresh content on the fly, AI-Writer acts as your personal web-browsing assistant.
 
-- [Ktor Documentation](https://ktor.io/docs/home.html)
-- [Ktor GitHub page](https://github.com/ktorio/ktor)
-- The [Ktor Slack chat](https://app.slack.com/client/T09229ZC6/C0A974TJ9). You'll need to [request an invite](https://surveys.jetbrains.com/s3/kotlin-slack-sign-up) to join.
+## ✨ Features
 
-## Features
+- **📝 Webpage Summarization:** Instantly generate concise, accurate summaries of long articles, blogs, or documentation.
+- **💬 Contextual Q&A:** Ask questions based directly on the content of the webpage you are currently reading.
+- **💡 Content Generation:** Need to write an email, reply to a thread, or draft a post? Let the AI assist you right in your browser.
 
-Here's a list of features included in this project:
+## 🛠️ Architecture & Tech Stack
 
-| Name                                                                   | Description                                                                        |
-| ------------------------------------------------------------------------|------------------------------------------------------------------------------------ |
-| [CORS](https://start.ktor.io/p/cors)                                   | Enables Cross-Origin Resource Sharing (CORS)                                       |
-| [Routing](https://start.ktor.io/p/routing)                             | Provides a structured routing DSL                                                  |
-| [Content Negotiation](https://start.ktor.io/p/content-negotiation)     | Provides automatic content conversion according to Content-Type and Accept headers |
-| [kotlinx.serialization](https://start.ktor.io/p/kotlinx-serialization) | Handles JSON serialization using kotlinx.serialization library                     |
+This project uses a modern, strictly separated architecture to ensure scalability and ease of maintenance:
 
-## Building & Running
+*   **Frontend (Browser Extension):** Built using **Manifest V3** for modern, secure, and performant browser integration.
+*   **Backend Server:** Powered by **Ktor**, handling high-concurrency server-side operations and API routing. 
+*   **AI Agent:** Developed using the **Koog** AI Agent framework, completely decoupling the intelligent agent logic from the backend infrastructure.
 
-To build or run the project, use one of the following tasks:
+## 📖 Developer's Journey
 
-| Task                                    | Description                                                          |
-| -----------------------------------------|---------------------------------------------------------------------- |
-| `./gradlew test`                        | Run the tests                                                        |
-| `./gradlew build`                       | Build everything                                                     |
-| `./gradlew buildFatJar`                 | Build an executable JAR of the server with all dependencies included |
-| `./gradlew buildImage`                  | Build the docker image to use with the fat JAR                       |
-| `./gradlew publishImageToLocalRegistry` | Publish the docker image locally                                     |
-| `./gradlew run`                         | Run the server                                                       |
-| `./gradlew runDocker`                   | Run using the local docker image                                     |
+This project marks my first deep dive into **Kotlin** beyond traditional Android and frontend web development. Building AI-Writer allowed me to explore Kotlin's evolving maturity and flexibility across diverse server-side and AI use cases.
 
-If the server starts successfully, you'll see the following output:
+Throughout this journey, I gained hands-on experience in:
+- Backend system design
+- AI agent architecture and orchestration
+- Browser extension development using modern manifest-based systems
 
-```
-2024-12-04 14:32:45.584 [main] INFO  Application - Application started in 0.303 seconds.
-2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
-```
+**Key Takeaways:**
+- **Ktor vs. The World:** I found Ktor to be incredibly lightweight yet increasingly powerful, standing strong against traditional backend frameworks like Spring Boot, Node.js, and FastAPI.
+- **Koog Framework:** Building AI agents doesn't have to be complicated. Koog provided a simple, intuitive, and highly effective way to integrate LLM logic without bloating the codebase.
 
+## 🚀 Getting Started
+
+### Prerequisites
+- JDK 11 or higher
+- Gradle
+- A Chromium-based browser (Chrome, Edge, Brave)
+
+### Running the Backend (Ktor + Koog)
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Quantum3600/AI-writer.git
+   cd AI-writer/backend
+   ```
+2. Set up your AI API keys in an `.env` file.
+3. Run the Ktor server:
+   ```bash
+   ./gradlew run
+   ```
+
+### Loading the Extension
+1. Open your browser and navigate to the extensions page (e.g., `chrome://extensions/`).
+2. Enable **Developer mode** in the top right corner.
+3. Click **Load unpacked** and select the `extension` directory from this repository.
+4. Pin the extension to your toolbar and start writing!
+
+## 🤝 Contributing
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/Quantum3600/AI-writer/issues) if you want to contribute.
+
+## 📄 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
