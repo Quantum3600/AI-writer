@@ -35,7 +35,7 @@
 
 | Ask | Write | Translate |
 |------|-------|-----------|
-| ![Placeholder](https://via.placeholder.com/150) | ![Placeholder](https://via.placeholder.com/150) | ![Placeholder](https://via.placeholder.com/150) |
+| ![Ask](.github/public/Screenshot 2026-04-03 190845.png) | ![Placeholder](https://via.placeholder.com/150) | ![Placeholder](https://via.placeholder.com/150) |
 
 ---
 
