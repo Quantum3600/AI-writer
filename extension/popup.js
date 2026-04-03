@@ -1,5 +1,8 @@
 const CHAT_SESSION_STORAGE_KEY = "chatSessionsByTabAndMode";
-const BACKEND_BASE_URL = "http://localhost:8080";
+const IS_LOCAL_DEV = false;
+const BACKEND_BASE_URL = IS_LOCAL_DEV
+                             ? "http://localhost:8080"
+                             : "https://ai-writer-0l3m.onrender.com";
 let currentMode = "ask";
 const MAX_TYPING_ANIMATION_CHARS = 700;
 const MAX_RICH_TEXT_PARSE_CHARS = 3000;
