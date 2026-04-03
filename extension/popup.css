@@ -78,9 +78,27 @@ body {
 }
 
 .header-actions {
+    position: absolute;
+    top: 14px;
+    right: 16px;
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.header-icon-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    background: var(--bg-soft);
+    color: var(--text-main);
+    box-shadow: var(--shadow-sm);
+}
+
+.header-icon-btn:hover {
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent-color) 45%, var(--border-color));
 }
 
 .secondary-btn {
@@ -113,9 +131,12 @@ body {
 .header-left {
     min-width: 0;
     flex: 1;
+    width: 100%;
 }
 
 .title-wrap {
+    width: 100%;
+    padding-right: 132px;
     margin-bottom: 10px;
 }
 
