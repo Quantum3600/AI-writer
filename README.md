@@ -35,7 +35,7 @@
 
 | Ask | Write | Translate |
 |------|-------|-----------|
-| ![Ask](.github/public/Screenshot 2026-04-03 190845.png) | ![Placeholder](https://via.placeholder.com/150) | ![Placeholder](https://via.placeholder.com/150) |
+| <img src=".github/public/Screenshot 2026-04-03 190845.png" alt="Alt Text" width="300"> | <img src="path/to/image.png" alt="Alt Text" width="300"> | <img src="path/to/image.png" alt="Alt Text" width="300"> |
 
 ---
 
