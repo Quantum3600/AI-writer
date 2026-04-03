@@ -39,13 +39,13 @@ This project uses a modern, strictly separated architecture to ensure scalabilit
 | :--- | :--- | :--- |
 | **🎨 Frontend** | **Manifest V3** | Modern, secure, and performant browser extension integration with Vanilla JS & CSS. |
 | **⚙️ Backend** | **Ktor (Kotlin)** | Handles high-concurrency server-side operations and API routing seamlessly. |
-| **🧠 AI Agent** | **Koog Framework** | Decouples the intelligent LLM agent logic from the backend infrastructure. |
+| **🧠 AI Agent** | **Koog Framework (Kotlin)** | Decouples the intelligent LLM agent logic from the backend infrastructure. |
 
 ---
 
 ## 📖 Developer's Journey
 
-This project marks my first deep dive into **Kotlin** beyond traditional Android and frontend web development. Building AI-Writer allowed me to explore Kotlin's evolving maturity and flexibility across diverse server-side and AI use cases.
+This project marks my first deep dive into **Kotlin** beyond traditional Android, Multiplatform and frontend web development. Building AI-Writer allowed me to explore Kotlin's evolving maturity and flexibility across diverse server-side and AI use cases.
 
 **Key Takeaways:**
 * 🚀 **Ktor vs. The World:** I found Ktor to be incredibly lightweight yet increasingly powerful, standing strong against traditional backend frameworks like Spring Boot, Node.js, and FastAPI.
