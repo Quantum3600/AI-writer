@@ -5,17 +5,27 @@ import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.clients.google.GoogleModels
 import com.trishit.com.trishit.assistant.models.AIResponse
 import com.trishit.com.trishit.assistant.models.AskRequest
+import com.trishit.com.trishit.assistant.models.ConversationHistoryResponse
+import com.trishit.com.trishit.assistant.models.HistoryListResponse
+import com.trishit.com.trishit.assistant.models.NewChatRequest
+import com.trishit.com.trishit.assistant.models.NewChatResponse
 import com.trishit.com.trishit.assistant.models.WriteRequest
-import io.ktor.http.content.*
-import io.ktor.http.*
-import io.ktor.server.application.*
-import io.ktor.server.plugins.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
-import io.ktor.utils.io.jvm.javaio.*
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.PartData
+import io.ktor.http.content.forEachPart
+import io.ktor.server.application.Application
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.request.receive
+import io.ktor.server.request.receiveMultipart
+import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
+import io.ktor.server.routing.routing
+import io.ktor.utils.io.jvm.javaio.toInputStream
 import java.io.File
-import java.util.*
+import java.util.UUID
 
 private fun requireSessionId(rawSessionId: String?): String {
     val sessionId = rawSessionId?.trim().orEmpty()
@@ -31,10 +41,45 @@ fun Application.configureRouting() {
             call.respondText("OK", ContentType.Text.Plain, HttpStatusCode.OK)
         }
 
+        post("/api/chat/new") {
+            try {
+                val request = call.receive<NewChatRequest>()
+                val sessionId = ConversationHistoryStore.createSession(request.chatKey)
+                call.respond(NewChatResponse(sessionId = sessionId))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, AIResponse("Error: ${e.message}"))
+            }
+        }
+
+        get("/api/history") {
+            val chatKey = call.request.queryParameters["chatKey"]?.trim().orEmpty()
+            if (chatKey.isBlank()) {
+                call.respond(HttpStatusCode.BadRequest, AIResponse("Error: chatKey is required"))
+                return@get
+            }
+
+            val conversations = ConversationHistoryStore.listSummaries(chatKey)
+            call.respond(HistoryListResponse(conversations = conversations))
+        }
+
+        get("/api/history/{sessionId}") {
+            val sessionId = call.parameters["sessionId"]?.trim().orEmpty()
+            if (sessionId.isBlank()) {
+                call.respond(HttpStatusCode.BadRequest, AIResponse("Error: sessionId is required"))
+                return@get
+            }
+
+            val messages = ConversationHistoryStore.getMessages(sessionId)
+            call.respond(ConversationHistoryResponse(sessionId = sessionId, messages = messages))
+        }
+
         post("/api/ask") {
             try {
                 val request = call.receive<AskRequest>()
                 val sessionId = requireSessionId(request.sessionId)
+                ConversationHistoryStore.ensureSession(sessionId, request.chatKey)
+                ConversationHistoryStore.appendUserMessage(sessionId, request.prompt)
+
                 val promptText = if (!request.pageContext.isNullOrBlank()) {
                     "Webpage Context:\n---\n${request.pageContext}\n---\nQuestion: ${request.prompt}"
                 } else {
@@ -49,6 +94,7 @@ fun Application.configureRouting() {
                     GoogleModels.Gemini2_5Flash
                 )
                 val output = messages.joinToString(separator = "") { it.content }
+                ConversationHistoryStore.appendAssistantMessage(sessionId, output)
                 call.respond(AIResponse(output))
             } catch (e: BadRequestException) {
                 call.respond(HttpStatusCode.BadRequest, AIResponse("Error: ${e.message}"))
@@ -61,6 +107,8 @@ fun Application.configureRouting() {
             try {
                 val request = call.receive<WriteRequest>()
                 val sessionId = requireSessionId(request.sessionId)
+                ConversationHistoryStore.ensureSession(sessionId, request.chatKey)
+                ConversationHistoryStore.appendUserMessage(sessionId, request.instruction)
                 val messages = llm().execute(
                     prompt(sessionId) {
                         system("You are an expert writing assistant. Follow the instructions to draft, expand, or rewrite text. Provide ONLY the final text without conversational filler.")
@@ -70,6 +118,7 @@ fun Application.configureRouting() {
                 )
 
                 val output = messages.joinToString(separator = "") { it.content }
+                ConversationHistoryStore.appendAssistantMessage(sessionId, output)
                 call.respond(AIResponse(output))
             } catch (e: BadRequestException) {
                 call.respond(HttpStatusCode.BadRequest, AIResponse("Error: ${e.message}"))
@@ -82,6 +131,8 @@ fun Application.configureRouting() {
             try {
                 val request = call.receive<WriteRequest>()
                 val sessionId = requireSessionId(request.sessionId)
+                ConversationHistoryStore.ensureSession(sessionId, request.chatKey)
+                ConversationHistoryStore.appendUserMessage(sessionId, request.instruction)
                 val messages = llm().execute(
                     prompt(sessionId) {
                         system("You are an expert polyglot and linguistic translator. Provide ONLY the direct translation in the requested script/language. Do not include conversational filler.")
@@ -91,6 +142,7 @@ fun Application.configureRouting() {
                 )
 
                 val output = messages.joinToString(separator = "") { it.content }
+                ConversationHistoryStore.appendAssistantMessage(sessionId, output)
                 call.respond(AIResponse(output))
             } catch (e: BadRequestException) {
                 call.respond(HttpStatusCode.BadRequest, AIResponse("Error: ${e.message}"))
@@ -104,6 +156,7 @@ fun Application.configureRouting() {
             var sessionId: String? = null
             var mode = "ask"
             var pageContext = ""
+            var chatKey: String? = null
             var audioFile: File? = null
 
             multipart.forEachPart { part ->
@@ -113,6 +166,7 @@ fun Application.configureRouting() {
                             "sessionId" -> sessionId = part.value
                             "mode" -> mode = part.value
                             "context" -> pageContext = part.value
+                            "chatKey" -> chatKey = part.value
                         }
                     }
                     is PartData.FileItem -> {
@@ -132,6 +186,8 @@ fun Application.configureRouting() {
             try {
                 if (audioFile == null) throw IllegalArgumentException("No audio file received")
                 val resolvedSessionId = requireSessionId(sessionId)
+                ConversationHistoryStore.ensureSession(resolvedSessionId, chatKey)
+                ConversationHistoryStore.appendUserMessage(resolvedSessionId, "Voice message ($mode)")
 
                 val textPrompt = if (pageContext.isNotBlank() && mode != "translate") {
                     "Webpage Context:\n---\n$pageContext\n---\nListen to the attached audio instruction regarding this text."
@@ -141,7 +197,6 @@ fun Application.configureRouting() {
                     "Listen to the attached audio and follow the instructions."
                 }
 
-                // Determine system prompt based on mode
                 val sysPrompt = when (mode) {
                     "write" -> "You are an expert writing assistant. Follow the audio instructions to draft, expand, or rewrite text. Provide ONLY the final text without conversational filler."
                     "translate" -> "You are an expert polyglot and linguistic translator. Provide ONLY the direct translation in the requested script/language. Do not include conversational filler."
@@ -160,6 +215,7 @@ fun Application.configureRouting() {
                 )
 
                 val output = messages.joinToString(separator = "") { it.content }
+                ConversationHistoryStore.appendAssistantMessage(resolvedSessionId, output)
                 call.respond(AIResponse(output))
 
             } catch (e: BadRequestException) {

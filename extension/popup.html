@@ -2,36 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Writer</title>
     <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-    <div class="tabs">
-        <button id="tab-ask" class="tab active">Ask</button>
-        <button id="tab-write" class="tab">Write</button>
-        <button id="tab-translate" class="tab">Translate</button>
+<div class="popup-shell">
+    <div class="app-header">
+        <div class="header-left">
+            <div class="title-wrap">
+                <h1 class="app-title">AI Writer</h1>
+                <p class="app-subtitle">Ask, write, and translate faster</p>
+            </div>
+            <div class="tabs" role="tablist" aria-label="Assistant mode">
+                <button id="tab-ask" class="tab active" role="tab" aria-selected="true">Ask</button>
+                <button id="tab-write" class="tab" role="tab" aria-selected="false">Write</button>
+                <button id="tab-translate" class="tab" role="tab" aria-selected="false">Translate</button>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button id="btn-history" class="secondary-btn" title="View previous conversations" aria-label="View conversation history">History</button>
+            <button id="btn-new-chat" class="secondary-btn" title="Start a new chat" aria-label="Start a new chat">New Chat</button>
+            <button id="theme-toggle" class="icon-btn" title="Toggle dark mode" aria-label="Toggle dark mode">
+                <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+            </button>
+        </div>
     </div>
 
-    <div class="input-container">
-        <textarea id="user-input" placeholder="Ask a question about this page..."></textarea>
-        
-        <div class="controls">
-            <button id="btn-mic" title="Record Voice">🎤</button>
-            <button id="btn-submit">Send</button>
+    <div id="history-panel" class="history-panel hidden" aria-live="polite">
+        <div class="history-panel-title">Conversation History</div>
+        <div id="history-list" class="history-list"></div>
+    </div>
+
+    <div id="chat-container" class="chat-container" aria-live="polite" aria-label="Conversation">
+        <div id="empty-state" class="empty-state">
+            <div class="empty-title">Start with a quick prompt</div>
+            <div class="empty-subtitle">Use Ask for questions, Write for rewrites, Translate for language conversion.</div>
         </div>
-        
+    </div>
+
+    <div class="input-area">
         <div class="options">
-            <label>
-                <input type="checkbox" id="use-context" checked> 
+            <label class="checkbox-container" for="use-context">
+                <input type="checkbox" id="use-context" checked>
+                <span class="checkmark"></span>
                 Include page context
             </label>
+            <div id="loading" class="loading-indicator hidden" aria-label="Loading response">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+        </div>
+
+        <div class="input-wrapper">
+            <textarea id="user-input" rows="1" placeholder="Ask a question about this page..." aria-label="Prompt input"></textarea>
+
+            <div class="controls">
+                <button id="btn-mic" class="icon-btn action-btn mic-btn" title="Record voice" aria-label="Record voice">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+                </button>
+                <button id="btn-submit" class="icon-btn action-btn send-btn" title="Send" aria-label="Send message">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+            </div>
         </div>
     </div>
+</div>
 
-    <div class="response-container">
-        <div id="loading" class="hidden">Thinking...</div>
-        <div id="response-output"></div>
-    </div>
-
-    <script src="popup.js"></script>
+<script src="popup.js"></script>
 </body>
 </html>
