@@ -27,6 +27,17 @@ import io.ktor.utils.io.jvm.javaio.toInputStream
 import java.io.File
 import java.util.UUID
 
+private suspend fun <T> executeWithModelFallback(
+    primary: suspend () -> T,
+    fallback: suspend () -> T
+): T {
+    return try {
+        primary()
+    } catch (_: Exception) {
+        fallback()
+    }
+}
+
 private fun requireSessionId(rawSessionId: String?): String {
     val sessionId = rawSessionId?.trim().orEmpty()
     if (sessionId.isBlank()) {
@@ -86,12 +97,13 @@ fun Application.configureRouting() {
                     request.prompt
                 }
 
-                val messages = llm().execute(
-                    prompt(sessionId) {
-                        system("You are a helpful AI assistant powering a browser extension. Answer clearly and concisely.")
-                        user(promptText)
-                    },
-                    GoogleModels.Gemini2_5Flash
+                val requestPrompt = prompt(sessionId) {
+                    system("You are a helpful AI assistant powering a browser extension. Answer clearly and concisely.")
+                    user(promptText)
+                }
+                val messages = executeWithModelFallback(
+                    primary = { llm().execute(requestPrompt, GoogleModels.Gemini2_5Flash) },
+                    fallback = { llm().execute(requestPrompt, GoogleModels.Gemini3_Flash_Preview) }
                 )
                 val output = messages.joinToString(separator = "") { it.content }
                 ConversationHistoryStore.appendAssistantMessage(sessionId, output)
@@ -109,12 +121,14 @@ fun Application.configureRouting() {
                 val sessionId = requireSessionId(request.sessionId)
                 ConversationHistoryStore.ensureSession(sessionId, request.chatKey)
                 ConversationHistoryStore.appendUserMessage(sessionId, request.instruction)
-                val messages = llm().execute(
-                    prompt(sessionId) {
-                        system("You are an expert writing assistant. Follow the instructions to draft, expand, or rewrite text. Provide ONLY the final text without conversational filler.")
-                        user("Context: ${request.context}\n\nInstructions: ${request.instruction}")
-                    },
-                    GoogleModels.Gemini2_5Flash
+
+                val requestPrompt = prompt(sessionId) {
+                    system("You are an expert writing assistant. Follow the instructions to draft, expand, or rewrite text. Provide ONLY the final text without conversational filler.")
+                    user("Context: ${request.context}\n\nInstructions: ${request.instruction}")
+                }
+                val messages = executeWithModelFallback(
+                    primary = { llm().execute(requestPrompt, GoogleModels.Gemini2_5Flash) },
+                    fallback = { llm().execute(requestPrompt, GoogleModels.Gemini3_Flash_Preview) }
                 )
 
                 val output = messages.joinToString(separator = "") { it.content }
@@ -133,12 +147,14 @@ fun Application.configureRouting() {
                 val sessionId = requireSessionId(request.sessionId)
                 ConversationHistoryStore.ensureSession(sessionId, request.chatKey)
                 ConversationHistoryStore.appendUserMessage(sessionId, request.instruction)
-                val messages = llm().execute(
-                    prompt(sessionId) {
-                        system("You are an expert polyglot and linguistic translator. Provide ONLY the direct translation in the requested script/language. Do not include conversational filler.")
-                        user("Text to translate:\n${request.context}\n\nInstructions: ${request.instruction}")
-                    },
-                    GoogleModels.Gemini2_5Flash
+
+                val requestPrompt = prompt(sessionId) {
+                    system("You are an expert polyglot and linguistic translator. Provide ONLY the direct translation in the requested script/language. Do not include conversational filler.")
+                    user("Text to translate:\n${request.context}\n\nInstructions: ${request.instruction}")
+                }
+                val messages = executeWithModelFallback(
+                    primary = { llm().execute(requestPrompt, GoogleModels.Gemini2_5Flash) },
+                    fallback = { llm().execute(requestPrompt, GoogleModels.Gemini3_Flash_Preview) }
                 )
 
                 val output = messages.joinToString(separator = "") { it.content }
@@ -203,15 +219,16 @@ fun Application.configureRouting() {
                     else -> "You are a helpful AI assistant. Answer the user's questions clearly and accurately."
                 }
 
-                val messages = llm().execute(
-                    prompt(resolvedSessionId) {
-                        system(sysPrompt)
-                        user {
-                            text(textPrompt)
-                            audio(audioFile.absolutePath)
-                        }
-                    },
-                    GoogleModels.Gemini2_5Flash
+                val requestPrompt = prompt(resolvedSessionId) {
+                    system(sysPrompt)
+                    user {
+                        text(textPrompt)
+                        audio(audioFile.absolutePath)
+                    }
+                }
+                val messages = executeWithModelFallback(
+                    primary = { llm().execute(requestPrompt, GoogleModels.Gemini2_5Flash) },
+                    fallback = { llm().execute(requestPrompt, GoogleModels.Gemini3_Flash_Preview) }
                 )
 
                 val output = messages.joinToString(separator = "") { it.content }

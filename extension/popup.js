@@ -1,6 +1,9 @@
 const CHAT_SESSION_STORAGE_KEY = "chatSessionsByTabAndMode";
 const BACKEND_BASE_URL = "http://localhost:8080";
 let currentMode = "ask";
+const MAX_TYPING_ANIMATION_CHARS = 700;
+const MAX_RICH_TEXT_PARSE_CHARS = 3000;
+const TYPING_CHUNK_SIZE = 20;
 
 function createSessionId() {
     return "session_" + Date.now().toString(36) + "_" + Math.random().toString(36).substring(2, 10);
@@ -191,84 +194,83 @@ function toSafeHttpUrl(rawUrl) {
 function createRichTextNodes(input) {
     const text = String(input || "");
     const nodes = [];
-    let i = 0;
+    const tokenPattern = /(\*\*[^*\n]+\*\*|\*[^*\n]+\*|`[^`\n]+`|\[[^\]\n]+\]\((https?:\/\/[^\s)]+)\))/g;
 
-    function pushText(value) {
-        if (value) nodes.push(document.createTextNode(value));
+    let lastIndex = 0;
+    let match;
+
+    while ((match = tokenPattern.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            nodes.push(document.createTextNode(text.slice(lastIndex, match.index)));
+        }
+
+        const token = match[0];
+
+        if (token.startsWith("**") && token.endsWith("**")) {
+            const strong = document.createElement("strong");
+            strong.textContent = token.slice(2, -2);
+            nodes.push(strong);
+        } else if (token.startsWith("*") && token.endsWith("*")) {
+            const em = document.createElement("em");
+            em.textContent = token.slice(1, -1);
+            nodes.push(em);
+        } else if (token.startsWith("`") && token.endsWith("`")) {
+            const code = document.createElement("code");
+            code.textContent = token.slice(1, -1);
+            nodes.push(code);
+        } else if (token.startsWith("[")) {
+            const labelEnd = token.indexOf("](");
+            const label = token.slice(1, labelEnd);
+            const rawUrl = token.slice(labelEnd + 2, -1);
+            const safeUrl = toSafeHttpUrl(rawUrl);
+
+            if (safeUrl) {
+                const link = document.createElement("a");
+                link.href = safeUrl;
+                link.target = "_blank";
+                link.rel = "noopener noreferrer";
+                link.textContent = label;
+                nodes.push(link);
+            } else {
+                nodes.push(document.createTextNode(token));
+            }
+        } else {
+            nodes.push(document.createTextNode(token));
+        }
+
+        lastIndex = tokenPattern.lastIndex;
     }
 
-    while (i < text.length) {
-        if (text.startsWith("**", i)) {
-            const end = text.indexOf("**", i + 2);
-            if (end > i + 2) {
-                const strong = document.createElement("strong");
-                createRichTextNodes(text.slice(i + 2, end)).forEach(node => strong.appendChild(node));
-                nodes.push(strong);
-                i = end + 2;
-                continue;
-            }
-        }
-
-        if (text[i] === "*" && !text.startsWith("**", i)) {
-            const end = text.indexOf("*", i + 1);
-            if (end > i + 1) {
-                const em = document.createElement("em");
-                createRichTextNodes(text.slice(i + 1, end)).forEach(node => em.appendChild(node));
-                nodes.push(em);
-                i = end + 1;
-                continue;
-            }
-        }
-
-        if (text[i] === "`") {
-            const end = text.indexOf("`", i + 1);
-            if (end > i + 1) {
-                const code = document.createElement("code");
-                code.textContent = text.slice(i + 1, end);
-                nodes.push(code);
-                i = end + 1;
-                continue;
-            }
-        }
-
-        if (text[i] === "[") {
-            const textEnd = text.indexOf("]", i + 1);
-            if (textEnd > i + 1 && text[textEnd + 1] === "(") {
-                const urlEnd = text.indexOf(")", textEnd + 2);
-                if (urlEnd > textEnd + 2) {
-                    const label = text.slice(i + 1, textEnd);
-                    const safeUrl = toSafeHttpUrl(text.slice(textEnd + 2, urlEnd));
-                    if (safeUrl) {
-                        const link = document.createElement("a");
-                        link.href = safeUrl;
-                        link.target = "_blank";
-                        link.rel = "noopener noreferrer";
-                        createRichTextNodes(label).forEach(node => link.appendChild(node));
-                        nodes.push(link);
-                        i = urlEnd + 1;
-                        continue;
-                    }
-                }
-            }
-        }
-
-        const nextSpecial = [
-            text.indexOf("**", i),
-            text.indexOf("*", i),
-            text.indexOf("`", i),
-            text.indexOf("[", i)
-        ].filter(index => index >= 0);
-        const nextIndex = nextSpecial.length ? Math.min(...nextSpecial) : text.length;
-        pushText(text.slice(i, nextIndex));
-        i = nextIndex;
+    if (lastIndex < text.length) {
+        nodes.push(document.createTextNode(text.slice(lastIndex)));
     }
 
     return nodes;
 }
 
-function renderRichTextMessage(container, messageText) {
+function renderPlainTextMessage(container, messageText) {
     container.textContent = "";
     const lines = String(messageText || "").split("\n");
+
+    lines.forEach((line, idx) => {
+        container.appendChild(document.createTextNode(line));
+        if (idx < lines.length - 1) {
+            container.appendChild(document.createElement("br"));
+        }
+    });
+}
+
+function renderRichTextMessage(container, messageText) {
+    container.textContent = "";
+    const text = String(messageText || "");
+
+    // Avoid expensive recursive markdown parsing on very large model responses.
+    if (text.length > MAX_RICH_TEXT_PARSE_CHARS) {
+        renderPlainTextMessage(container, text);
+        return;
+    }
+
+    const lines = text.split("\n");
 
     lines.forEach((line, idx) => {
         createRichTextNodes(line).forEach(node => container.appendChild(node));
@@ -276,6 +278,11 @@ function renderRichTextMessage(container, messageText) {
             container.appendChild(document.createElement("br"));
         }
     });
+}
+
+function shouldAnimateTyping(text) {
+    if (prefersReducedMotion) return false;
+    return String(text || "").length <= MAX_TYPING_ANIMATION_CHARS;
 }
 
 function addMessage(text, sender) {
@@ -325,20 +332,30 @@ async function addTypedAIMessage(text) {
     msgDiv.classList.add("message", "msg-ai", "msg-typing");
     chatContainer.appendChild(msgDiv);
 
-    if (prefersReducedMotion) {
+    if (!shouldAnimateTyping(finalText)) {
         renderRichTextMessage(msgDiv, finalText);
         msgDiv.classList.remove("msg-typing");
         chatContainer.scrollTop = chatContainer.scrollHeight;
         return;
     }
 
-    const chars = [...finalText];
-    const step = Math.max(1, Math.ceil(chars.length / 160));
+    const textNode = document.createTextNode("");
+    msgDiv.appendChild(textNode);
 
-    for (let i = 0; i < chars.length; i += step) {
-        msgDiv.innerText = chars.slice(0, i + step).join("");
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        await new Promise(resolve => setTimeout(resolve, 14));
+    let index = 0;
+    let frameCount = 0;
+
+    while (index < finalText.length) {
+        const nextIndex = Math.min(finalText.length, index + TYPING_CHUNK_SIZE);
+        textNode.appendData(finalText.slice(index, nextIndex));
+        index = nextIndex;
+        frameCount += 1;
+
+        if (frameCount % 3 === 0 || index >= finalText.length) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        await new Promise(resolve => requestAnimationFrame(resolve));
     }
 
     msgDiv.classList.remove("msg-typing");

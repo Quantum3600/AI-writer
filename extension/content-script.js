@@ -2,6 +2,10 @@ const CAPTURE_SELECTION_MESSAGE = "AI_WRITER_CAPTURE_SELECTION";
 const INSERT_TEXT_MESSAGE = "AI_WRITER_INSERT_TEXT";
 
 let lastSelectionSnapshot = null;
+let suppressSelectionSnapshot = 0;
+let lastSnapshotAt = 0;
+const SNAPSHOT_THROTTLE_MS = 120;
+let snapshotScheduled = false;
 
 function isTextControl(element) {
     return element instanceof HTMLTextAreaElement ||
@@ -14,7 +18,17 @@ function getEditableHost(node) {
     return element?.closest?.("[contenteditable='true'], [contenteditable='plaintext-only']") || null;
 }
 
-function cloneCurrentSelection() {
+function cloneCurrentSelection(force = false) {
+    if (suppressSelectionSnapshot > 0) {
+        return lastSelectionSnapshot;
+    }
+
+    const now = Date.now();
+    if (!force && now - lastSnapshotAt < SNAPSHOT_THROTTLE_MS) {
+        return lastSelectionSnapshot;
+    }
+    lastSnapshotAt = now;
+
     const active = document.activeElement;
 
     if (isTextControl(active) && !active.disabled && !active.readOnly) {
@@ -41,25 +55,48 @@ function cloneCurrentSelection() {
     return lastSelectionSnapshot;
 }
 
+function scheduleSelectionSnapshot() {
+    if (snapshotScheduled || suppressSelectionSnapshot > 0) return;
+    snapshotScheduled = true;
+
+    setTimeout(() => {
+        snapshotScheduled = false;
+        cloneCurrentSelection(false);
+    }, 0);
+}
+
+function withSelectionSnapshotSuppressed(operation) {
+    suppressSelectionSnapshot += 1;
+    try {
+        return operation();
+    } finally {
+        suppressSelectionSnapshot = Math.max(0, suppressSelectionSnapshot - 1);
+    }
+}
+
 function restoreSelectionSnapshot() {
     const snapshot = lastSelectionSnapshot;
     if (!snapshot) return null;
 
     if (snapshot.kind === "control") {
         if (!snapshot.element?.isConnected || snapshot.element.disabled || snapshot.element.readOnly) return null;
-        snapshot.element.focus();
-        snapshot.element.setSelectionRange(snapshot.start, snapshot.end);
-        return snapshot.element;
+        return withSelectionSnapshotSuppressed(() => {
+            snapshot.element.focus();
+            snapshot.element.setSelectionRange(snapshot.start, snapshot.end);
+            return snapshot.element;
+        });
     }
 
     if (snapshot.kind === "range") {
         if (!snapshot.host?.isConnected) return null;
-        snapshot.host.focus();
-        const selection = window.getSelection();
-        if (!selection) return null;
-        selection.removeAllRanges();
-        selection.addRange(snapshot.range.cloneRange());
-        return snapshot.host;
+        return withSelectionSnapshotSuppressed(() => {
+            snapshot.host.focus();
+            const selection = window.getSelection();
+            if (!selection) return null;
+            selection.removeAllRanges();
+            selection.addRange(snapshot.range.cloneRange());
+            return snapshot.host;
+        });
     }
 
     return null;
@@ -170,7 +207,7 @@ function isGoogleDocsPage() {
 }
 
 function captureSelection() {
-    const snapshot = cloneCurrentSelection() || lastSelectionSnapshot;
+    const snapshot = cloneCurrentSelection(true) || lastSelectionSnapshot;
     if (!snapshot) {
         return { ok: false, reason: "no-selection" };
     }
@@ -187,21 +224,21 @@ function insertText(text) {
 
     const restored = restoreSelectionSnapshot();
     if (!restored) {
-        cloneCurrentSelection();
+        cloneCurrentSelection(true);
     }
 
     const active = document.activeElement;
     if (isTextControl(active) && !active.disabled && !active.readOnly) {
-        return { ok: insertIntoControl(active, incomingText), method: "control" };
+        return withSelectionSnapshotSuppressed(() => ({ ok: insertIntoControl(active, incomingText), method: "control" }));
     }
 
     if (active instanceof HTMLElement && active.isContentEditable) {
-        const inserted = insertIntoContentEditable(incomingText);
+        const inserted = withSelectionSnapshotSuppressed(() => insertIntoContentEditable(incomingText));
         if (inserted) return { ok: true, method: "contenteditable" };
     }
 
     if (isGoogleDocsPage()) {
-        const docsResult = insertIntoGoogleDocs(incomingText);
+        const docsResult = withSelectionSnapshotSuppressed(() => insertIntoGoogleDocs(incomingText));
         if (docsResult.ok) return docsResult;
     }
 
@@ -231,11 +268,13 @@ function handleMessage(message, sender, sendResponse) {
     return false;
 }
 
-// Keep the latest selection/caret snapshot in sync while the page still has focus.
-document.addEventListener("selectionchange", cloneCurrentSelection);
-document.addEventListener("mouseup", cloneCurrentSelection, true);
-document.addEventListener("keyup", cloneCurrentSelection, true);
-document.addEventListener("focusin", cloneCurrentSelection, true);
+// Keep a lightweight caret snapshot in sync without listening to high-frequency selectionchange loops.
+document.addEventListener("mouseup", scheduleSelectionSnapshot, true);
+document.addEventListener("keyup", scheduleSelectionSnapshot, true);
+
+document.addEventListener("blur", () => {
+    snapshotScheduled = false;
+}, true);
 
 chrome.runtime.onMessage.addListener(handleMessage);
 
